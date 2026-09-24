@@ -3,14 +3,18 @@ import fetch from 'node-fetch';
 import * as XLSX from 'xlsx';
 import { writeFileSync } from 'fs';
 
-const credential = new ClientSecretCredential(
-  process.env.AZURE_TENANT_ID,
-  process.env.AZURE_CLIENT_ID,
-  process.env.AZURE_CLIENT_SECRET,
-);
+let _cred = null;
+function getCred() {
+  if (!_cred) _cred = new ClientSecretCredential(
+    process.env.AZURE_TENANT_ID,
+    process.env.AZURE_CLIENT_ID,
+    process.env.AZURE_CLIENT_SECRET,
+  );
+  return _cred;
+}
 
 async function graphToken() {
-  const t = await credential.getToken('https://graph.microsoft.com/.default');
+  const t = await getCred().getToken('https://graph.microsoft.com/.default');
   return t.token;
 }
 async function graphGet(url) {
@@ -104,13 +108,19 @@ async function fetchJira() {
 }
 
 async function main() {
-  console.log('Fetching vacation calendar...');
-  const vac = await fetchVacation();
-  console.log('Fetching availability...');
-  const {availBlanks,availHours} = await fetchAvailability();
-  console.log('Blanks:', availBlanks);
-  console.log('Fetching Jira...');
-  const jira = await fetchJira();
+  const hasAzure = process.env.AZURE_TENANT_ID && process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET;
+  const hasJira = process.env.JIRA_EMAIL && process.env.JIRA_API_TOKEN;
+  let vac={}, availBlanks=[], availHours={}, jira=[];
+  if (hasAzure) {
+    console.log('Fetching vacation calendar...');
+    try { vac = await fetchVacation(); } catch(e) { console.warn('Vacation skip:', e.message); }
+    console.log('Fetching availability...');
+    try { ({availBlanks,availHours} = await fetchAvailability()); } catch(e) { console.warn('Avail skip:', e.message); }
+    console.log('Blanks:', availBlanks);
+  } else { console.warn('No Azure creds — skipping SharePoint'); }
+  if (hasJira) {
+    console.log('Fetching Jira...');
+    try { jira = await fetchJira(); } catch(e) { console.warn('Jira skip:', e.message); }
   console.log(`${jira.length} issues`);
   const now = new Date();
   writeFileSync('data.json', JSON.stringify({
