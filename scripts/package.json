@@ -9,7 +9,6 @@
     "refresh": "node fetch-data.js && node build-dashboard.js"
   },
   "dependencies": {
-    "@azure/identity": "^4.4.0",
     "node-fetch": "^3.3.2",
     "xlsx": "^0.18.5"
   }
