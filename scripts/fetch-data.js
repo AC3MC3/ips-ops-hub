@@ -121,6 +121,7 @@ async function main() {
   if (hasJira) {
     console.log('Fetching Jira...');
     try { jira = await fetchJira(); } catch(e) { console.warn('Jira skip:', e.message); }
+  }
   console.log(`${jira.length} issues`);
   const now = new Date();
   writeFileSync('data.json', JSON.stringify({
