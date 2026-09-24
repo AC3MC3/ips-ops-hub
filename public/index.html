@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPS Ops Hub</title>
+<style>
+:root {
+  --bg:#f0f2f5;--sidebar:#0f172a;--sidebar-hover:#1e293b;--sidebar-active:#6366f1;
+  --card:#fff;--card-border:#e2e8f0;--text:#1e293b;--text-muted:#64748b;--text-light:#94a3b8;
+  --primary:#6366f1;--primary-light:#eef2ff;--green:#10b981;--green-light:#d1fae5;
+  --red:#ef4444;--red-light:#fee2e2;--orange:#f59e0b;--orange-light:#fef3c7;
+  --blue:#3b82f6;--blue-light:#dbeafe;--purple:#8b5cf6;--purple-light:#ede9fe;
+  --shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
+  --radius:12px;--sidebar-width:240px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:14px}
+.sidebar{width:var(--sidebar-width);background:var(--sidebar);position:fixed;top:0;left:0;height:100vh;display:flex;flex-direction:column;z-index:100}
+.sidebar-logo{padding:20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-logo h1{color:#fff;font-size:18px;font-weight:700;letter-spacing:-.3px}
+.sidebar-logo h1 span{color:var(--primary)}
+.sidebar-logo p{color:var(--text-light);font-size:11px;margin-top:2px}
+.sidebar-nav{flex:1;padding:12px 0;overflow-y:auto}
+.nav-section{padding:16px 16px 6px;color:rgba(255,255,255,.35);font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;color:rgba(255,255,255,.65);cursor:pointer;transition:all .15s;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500}
+.nav-item:hover{background:var(--sidebar-hover);color:#fff}
+.nav-item.active{background:var(--primary);color:#fff}
+.nav-item .badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.08)}
+.user-pill{display:flex;align-items:center;gap:10px}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+.user-info p{color:#fff;font-size:12px;font-weight:600}
+.user-info span{color:var(--text-light);font-size:11px}
+.main{margin-left:var(--sidebar-width);flex:1;min-height:100vh}
+.topbar{background:var(--card);border-bottom:1px solid var(--card-border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title h2{font-size:16px;font-weight:700}
+.topbar-title p{color:var(--text-muted);font-size:12px}
+.topbar-actions{display:flex;gap:10px;align-items:center}
+.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;display:flex;align-items:center;gap:6px}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{opacity:.9}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--card-border)}
+.btn-ghost:hover{background:var(--bg)}
+.content{padding:24px}
+.view{display:none}
+.view.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:24px}
+.kpi-card{background:var(--card);border-radius:var(--radius);padding:20px;border:1px solid var(--card-border);box-shadow:var(--shadow)}
+.kpi-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:8px}
+.kpi-value{font-size:28px;font-weight:800;letter-spacing:-1px}
+.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:4px}
+.kpi-card.green .kpi-value{color:var(--green)}
+.kpi-card.red .kpi-value{color:var(--red)}
+.kpi-card.orange .kpi-value{color:var(--orange)}
+.kpi-card.blue .kpi-value{color:var(--blue)}
+.kpi-card.purple .kpi-value{color:var(--purple)}
+.alerts-panel{background:var(--card);border-radius:var(--radius);border:1px solid var(--card-border);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden}
+.alerts-header{padding:16px 20px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between}
+.alerts-header h3{font-size:14px;font-weight:700}
+.alert-item{padding:14px 20px;border-bottom:1px solid var(--card-border);display:flex;align-items:flex-start;gap:12px;transition:background .1s;cursor:default}
+.alert-item:last-child{border-bottom:none}
+.alert-item:hover{background:var(--bg)}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.alert-dot.red{background:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.2)}
+.alert-dot.orange{background:var(--orange);box-shadow:0 0 0 3px rgba(245,158,11,.2)}
+.alert-dot.blue{background:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.2)}
+.alert-text strong{font-size:13px;font-weight:600;display:block;margin-bottom:2px}
+.alert-text span{font-size:12px;color:var(--text-muted)}
+.alert-tag{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-left:auto;flex-shrink:0}
+.alert-tag.red{background:var(--red-light);color:var(--red)}
+.alert-tag.orange{background:var(--orange-light);color:#92400e}
+.alert-tag.blue{background:var(--blue-light);color:var(--blue)}
+.reminder-panel{background:var(--card);border-radius:var(--radius);border:1px solid var(--card-border);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden}
+.reminder-row{display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--card-border)}
+.reminder-row:last-child{border-bottom:none}
+.reminder-row:hover{background:var(--bg)}
+.reminder-info{flex:1;min-width:0}
+.reminder-info strong{font-size:13px;font-weight:600;display:block}
+.reminder-info span{font-size:11px;color:var(--text-muted)}
+.reminder-last{font-size:11px;min-width:110px;text-align:right;margin-right:8px}
+.reminder-last.never{color:var(--orange);font-weight:600}
+.reminder-last.recent{color:var(--green);font-weight:600}
+.reminder-last.stale{color:var(--text-muted)}
+.btn-remind{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:var(--primary);color:#fff;white-space:nowrap;transition:opacity .15s}
+.btn-remind:hover:not(:disabled){opacity:.85}
+.btn-remind:disabled{background:var(--card-border);color:var(--text-muted);cursor:not-allowed}
+.btn-remind-all{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:var(--primary);color:#fff;white-space:nowrap}
+.dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:20px}
+.panel-header{padding:16px 20px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between}
+.panel-header h3{font-size:14px;font-weight:700}
+.panel-header a{font-size:12px;color:var(--primary);cursor:pointer;text-decoration:none}
+.avail-snap{background:var(--card);border-radius:var(--radius);border:1px solid var(--card-border);box-shadow:var(--shadow);overflow:hidden}
+.avail-table{width:100%;border-collapse:collapse}
+.avail-table th{padding:8px 12px;font-size:11px;color:var(--text-muted);text-align:center;border-bottom:1px solid var(--card-border);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.avail-table th:first-child{text-align:left}
+.avail-table td{padding:8px 12px;font-size:12px;border-bottom:1px solid var(--card-border);text-align:center}
+.avail-table td:first-child{text-align:left}
+.avail-table tr:last-child td{border-bottom:none}
+.day-cell{width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;cursor:help}
+.day-cell.available{background:var(--green-light);color:var(--green)}
+.day-cell.vacation{background:var(--red-light);color:var(--red)}
+.day-cell.holiday{background:var(--blue-light);color:var(--blue)}
+.day-cell.half{background:var(--orange-light);color:#92400e}
+.day-cell.maternity{background:var(--purple-light);color:var(--purple)}
+.day-cell.absent{background:#f1f5f9;color:var(--text-muted)}
+.role-badge{padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+.role-SE_IN{background:#dbeafe;color:#1e40af}
+.role-SE_US{background:#ede9fe;color:#5b21b6}
+.role-QA{background:#d1fae5;color:#065f46}
+.role-OM{background:#fef3c7;color:#92400e}
+.loc-badge{font-size:10px;color:var(--text-light)}
+.out-widget{background:var(--card);border-radius:var(--radius);border:1px solid var(--card-border);box-shadow:var(--shadow);overflow:hidden}
+.out-item{padding:12px 16px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;gap:10px}
+.out-item:last-child{border-bottom:none}
+.avatar-sm{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.out-info strong{font-size:13px;font-weight:600;display:block}
+.out-info span{font-size:11px;color:var(--text-muted)}
+.out-dates{margin-left:auto;font-size:11px;color:var(--red);font-weight:600;background:var(--red-light);padding:2px 8px;border-radius:6px}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.team-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--card-border);box-shadow:var(--shadow);padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.team-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--primary)}
+.card-top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.avatar-lg{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.team-card h3{font-size:14px;font-weight:700;margin-bottom:2px}
+.team-card .sub{font-size:11px;color:var(--text-muted)}
+.card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.jira-count{font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+.status-dot-sm{width:7px;height:7px;border-radius:50%;display:inline-block}
+.status-dot-sm.green{background:var(--green)}
+.status-dot-sm.red{background:var(--red)}
+.status-dot-sm.orange{background:var(--orange)}
+.vacation-ribbon{position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:3px 10px;letter-spacing:.5px;text-transform:uppercase}
+.workload-bar{height:8px;border-radius:4px;background:var(--card-border);overflow:hidden;margin-top:6px}
+.workload-fill{height:100%;border-radius:4px;transition:width .3s}
+.workload-fill.low{background:var(--green)}
+.workload-fill.medium{background:var(--orange)}
+.workload-fill.high{background:var(--red)}
+.filter-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--card-border);background:var(--card);cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);transition:all .15s}
+.filter-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.search-input{padding:8px 14px;border-radius:20px;border:1px solid var(--card-border);background:var(--card);font-size:13px;outline:none;width:220px}
+.search-input:focus{border-color:var(--primary)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border-radius:16px;width:100%;max-width:760px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+.modal-hero{background:linear-gradient(135deg,#0f172a,#1e293b);padding:28px;display:flex;align-items:center;gap:20px;position:relative}
+.modal-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex-shrink:0;border:3px solid rgba(255,255,255,.2)}
+.modal-hero-info h2{color:#fff;font-size:20px;font-weight:800;margin-bottom:4px}
+.modal-hero-info p{color:rgba(255,255,255,.7);font-size:13px}
+.modal-status{position:absolute;top:20px;right:60px}
+.modal-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.1);color:#fff;border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.modal-tabs{display:flex;border-bottom:1px solid var(--card-border);background:var(--card);overflow-x:auto}
+.modal-tab{padding:14px 18px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.modal-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.modal-body{padding:24px;max-height:55vh;overflow-y:auto}
+.modal-tab-content{display:none}
+.modal-tab-content.active{display:block}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.info-item label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;display:block;margin-bottom:4px}
+.info-item p{font-size:14px;font-weight:500}
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:12px;margin-top:20px;padding-bottom:6px;border-bottom:1px solid var(--card-border)}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px}
+.tag{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;background:var(--bg);border:1px solid var(--card-border)}
+.jira-issue{padding:10px 14px;border-radius:8px;background:var(--bg);border:1px solid var(--card-border);margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.issue-key{font-size:11px;color:var(--primary);font-weight:700;font-family:monospace;flex-shrink:0;min-width:90px}
+.issue-summary{font-size:12px;flex:1;font-weight:500}
+.status-pill{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;flex-shrink:0;white-space:nowrap}
+.avail-full{background:var(--card);border-radius:var(--radius);border:1px solid var(--card-border);box-shadow:var(--shadow);overflow:hidden}
+.avail-full-table{width:100%;border-collapse:collapse;font-size:12px}
+.avail-full-table th{padding:10px 8px;font-size:10px;color:var(--text-muted);border-bottom:2px solid var(--card-border);text-align:center;font-weight:600;position:sticky;top:0;background:var(--card);z-index:2;white-space:nowrap}
+.avail-full-table th:first-child{text-align:left;padding-left:16px;min-width:190px}
+.avail-full-table td{padding:8px;border-bottom:1px solid var(--card-border);text-align:center}
+.avail-full-table td:first-child{text-align:left;padding-left:16px}
+.avail-full-table tr:hover td{background:var(--bg)}
+.avail-full-table tr:last-child td{border-bottom:none}
+.projects-list{display:flex;flex-direction:column;gap:14px}
+.project-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--card-border);box-shadow:var(--shadow);padding:18px 20px}
+.project-card h3{font-size:14px;font-weight:700;margin-bottom:6px}
+.proj-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.proj-meta span{font-size:12px;color:var(--text-muted)}
+.pod-members{display:flex;gap:6px;flex-wrap:wrap}
+.pod-chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--bg);border:1px solid var(--card-border);display:flex;align-items:center;gap:4px}
+.pod-chip.on-vacation{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{padding:10px 14px;border-radius:8px;border:1px solid var(--card-border);font-size:14px;outline:none;transition:border-color .15s;background:var(--card)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary)}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-section-title{font-size:14px;font-weight:700;padding:20px 0 12px;border-bottom:1px solid var(--card-border);margin-bottom:4px;grid-column:1/-1;color:var(--text)}
+.form-full{grid-column:1/-1}
+.form-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--card-border);box-shadow:var(--shadow);padding:24px;margin-bottom:24px}
+.sync-banner{background:var(--primary-light);border:1px solid var(--primary);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:20px;font-size:13px;color:var(--primary);font-weight:500}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:12px 16px;background:var(--bg);border-top:1px solid var(--card-border)}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted)}
+.legend-dot{width:10px;height:10px;border-radius:3px}
+.empty{text-align:center;padding:48px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>IPS <span>Ops</span> Hub</h1>
+    <p>Material+ · Intelligence &amp; Programming</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showView('dashboard',this)"><span class="nav-icon">🏠</span> Dashboard<span class="badge">5</span></div>
+    <div class="nav-section">Team</div>
+    <div class="nav-item" onclick="showView('team',this)"><span class="nav-icon">👥</span> Team Directory</div>
+    <div class="nav-item" onclick="showView('availability',this)"><span class="nav-icon">📅</span> Availability</div>
+    <div class="nav-item" onclick="showView('projects',this)"><span class="nav-icon">🚀</span> Projects &amp; Pods</div>
+    <div class="nav-section">Manage</div>
+    <div class="nav-item" onclick="showView('addmember',this)"><span class="nav-icon">➕</span> Add Member</div>
+    <div class="nav-item" onclick="showView('settings',this)"><span class="nav-icon">⚙️</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-pill">
+      <div class="user-avatar">AC</div>
+      <div class="user-info"><p>Arindam Chowdhury</p><span>Director · IPS</span></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title">
+      <h2 id="view-title">Dashboard</h2>
+      <p id="view-sub">Friday, September 18, 2026 · Week 38</p>
+    </div>
+    <div class="topbar-actions">
+      <!-- Data refreshed: 25 Sept 2026, 04:15 IST --><span style="font-size:12px;color:var(--text-muted)">🔄 Refreshed: <span id="build-ts">25 Sept 2026, 04:15 IST</span></span>
+      <button class="btn btn-primary" onclick="showView('addmember',null)">+ Add Member</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="kpi-grid">
+        <div class="kpi-card blue"><div class="kpi-label">Total Team</div><div class="kpi-value">31</div><div class="kpi-sub">India 19 · US 12</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Out Today</div><div class="kpi-value">2</div><div class="kpi-sub">Vacation / Leave</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">Out Next Week</div><div class="kpi-value">3</div><div class="kpi-sub">Sep 21–25</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Active Jira</div><div class="kpi-value">50</div><div class="kpi-sub">Open issues today</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Overloaded</div><div class="kpi-value">1</div><div class="kpi-sub">8+ active tickets</div></div>
+      </div>
+      <div class="sync-banner">🔗 Live data from <strong>IPS Vacation Calendar.xlsx</strong> (SharePoint) &amp; <strong>IPSIPS Jira boards 394 &amp; 579</strong> · Synced just now</div>
+      <div class="alerts-panel">
+        <div class="alerts-header"><h3>🚨 Active Alerts</h3><span style="font-size:12px;color:var(--text-muted)">5 alerts require attention</span></div>
+        <div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>Asha Philip – Extended Vacation Conflict</strong><span>On extended leave through Oct 2026. Check any active project assignments and re-route as needed.</span></div><span class="alert-tag red">CRITICAL</span></div>
+        <div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>Joseph Hengoed – No Availability for Sep 21–25</strong><span>All cells blank in SE Weekly Availability sheet for next week. Use the 📬 Reminders panel below to nudge.</span></div><span class="alert-tag red">NO HRS</span></div>
+        <div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>Rahmy Akbar – No Availability for Sep 21–25</strong><span>All cells blank in SE Weekly Availability sheet for next week. Use the 📬 Reminders panel below to nudge.</span></div><span class="alert-tag red">NO HRS</span></div>
+        <div class="alert-item"><div class="alert-dot orange"></div><div class="alert-text"><strong>Sonu Dhananjay Ghadi – Out All of Next Week</strong><span>On vacation Sep 21–25. Active SE tasks may be delayed. Consider reassigning or arranging coverage.</span></div><span class="alert-tag orange">OOO</span></div>
+        <div class="alert-item"><div class="alert-dot blue"></div><div class="alert-text"><strong>Shraddha Singh – Returned from Leave</strong><span>Had an absence Sep 16 (QA). Back today. Has 2 SE Reviewed QA tickets queued up.</span></div><span class="alert-tag blue">INFO</span></div>
+      </div>
+      <div class="dash-grid">
+        <div class="avail-snap">
+          <div class="panel-header"><h3>📅 Team Availability – This &amp; Next Week</h3><a onclick="showView('availability',null)">Full calendar →</a></div>
+          <div style="overflow-x:auto"><table class="avail-table">
+            <thead><tr><th>Name</th><th>18 Fri</th><th>21 Mon</th><th>22 Tue</th><th>23 Wed</th><th>24 Thu</th><th>25 Fri</th></tr></thead>
+            <tbody id="avail-snap-body"></tbody>
+          </table></div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--green-light);border:1px solid var(--green)"></div>Available</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--red-light);border:1px solid var(--red)"></div>Vacation</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--orange-light);border:1px solid var(--orange)"></div>Half Day</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--purple-light);border:1px solid var(--purple)"></div>ML/Leave</div>
+          </div>
+        </div>
+        <div class="out-widget">
+          <div class="panel-header"><h3>🏖️ Who's Out</h3></div>
+          <div id="whos-out-list"></div>
+        </div>
+      </div>
+
+      <!-- AVAILABILITY REMINDERS -->
+      <div class="reminder-panel">
+        <div class="alerts-header">
+          <h3>📬 Availability Reminders</h3>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:12px;color:var(--text-muted)">Next week: Sep 21–25 · Remind those who haven't updated</span>
+            <button class="btn-remind-all" onclick="sendAllReminders()">Send All Overdue</button>
+          </div>
+        </div>
+        <div id="reminder-list"></div>
+      </div>
+    </div>
+
+    <!-- TEAM -->
+    <div class="view" id="view-team">
+      <div class="filter-bar">
+        <input type="text" class="search-input" placeholder="🔍 Search name, role..." id="team-search" oninput="renderTeam()">
+        <button class="filter-btn active" onclick="setRoleFilter('all',this)">All</button>
+        <button class="filter-btn" onclick="setRoleFilter('SE IN',this)">SE India</button>
+        <button class="filter-btn" onclick="setRoleFilter('SE US',this)">SE US</button>
+        <button class="filter-btn" onclick="setRoleFilter('QA',this)">QA</button>
+        <button class="filter-btn" onclick="setRoleFilter('OM',this)">Ops Mgr</button>
+        <button class="filter-btn" onclick="setRoleFilter('India',this)">🇮🇳 India</button>
+        <button class="filter-btn" onclick="setRoleFilter('US',this)">🇺🇸 US</button>
+      </div>
+      <div class="team-grid" id="team-grid"></div>
+    </div>
+
+    <!-- AVAILABILITY -->
+    <div class="view" id="view-availability">
+      <div class="avail-full">
+        <div style="overflow-x:auto;max-height:80vh;overflow-y:auto">
+          <table class="avail-full-table">
+            <thead id="avail-head"></thead>
+            <tbody id="avail-body"></tbody>
+          </table>
+        </div>
+        <div class="legend" style="padding:16px">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--green-light);border:1px solid var(--green)"></div>Available</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--red-light);border:1px solid var(--red)"></div>Vacation (V)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--orange-light);border:1px solid var(--orange)"></div>Half Day (HDL)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--purple-light);border:1px solid var(--purple)"></div>Maternity/ML (M)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f1f5f9;border:1px solid var(--card-border)"></div>Absent/OOO (A)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--blue-light);border:1px solid var(--blue)"></div>Holiday (H)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="view" id="view-projects">
+      <div class="sync-banner">🎯 Pulled from <strong>IPSIPS Jira boards 394 &amp; 579</strong> · 50 active issues across 20 assignees</div>
+      <div class="projects-list" id="projects-list"></div>
+    </div>
+
+    <!-- ADD MEMBER -->
+    <div class="view" id="view-addmember">
+      <div class="form-card">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:20px">👤 Add / Edit Team Member</h3>
+        <div class="form-grid">
+          <div class="form-section-title">Basic Information</div>
+          <div class="form-group"><label>Full Name *</label><input type="text" placeholder="e.g. Jane Smith"></div>
+          <div class="form-group"><label>Email *</label><input type="email" placeholder="jane.smith@materialplus.io"></div>
+          <div class="form-group"><label>Role *</label><select><option>SE IN</option><option>SE US</option><option>QA</option><option>OM</option></select></div>
+          <div class="form-group"><label>Location</label><select><option>India</option><option>US</option></select></div>
+          <div class="form-group"><label>Job Title</label><input type="text" placeholder="e.g. Senior Survey Engineer"></div>
+          <div class="form-group"><label>Start Date</label><input type="date"></div>
+          <div class="form-section-title">Shift &amp; Schedule</div>
+          <div class="form-group"><label>Shift Start</label><input type="time" value="09:00"></div>
+          <div class="form-group"><label>Shift End</label><input type="time" value="18:00"></div>
+          <div class="form-group"><label>Working Days</label><select><option>Mon–Fri</option><option>Mon–Sat</option></select></div>
+          <div class="form-group"><label>Programming Pair</label><select id="pair-select"><option>None</option></select></div>
+          <div class="form-section-title">Skills &amp; Expertise</div>
+          <div class="form-group form-full"><label>Skills (comma-separated)</label><input type="text" placeholder="e.g. Confirmit, Decipher, SPSS, Python"></div>
+          <div class="form-group form-full"><label>Work Experience</label><textarea placeholder="Brief background..."></textarea></div>
+          <div class="form-group form-full"><label>Expected Work / Specialisation</label><textarea placeholder="Typical project types..."></textarea></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-primary" onclick="alert('Saved! (Connect to a database to persist across sessions)')">💾 Save Member</button>
+          <button class="btn btn-ghost">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="view" id="view-settings">
+      <div class="form-card">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:20px">⚙️ Settings &amp; Integrations</h3>
+        <div class="form-grid">
+          <div class="form-section-title">Data Sources</div>
+          <div class="form-group"><label>Vacation Calendar (SharePoint)</label><input readonly value="materialworkplace.sharepoint.com / IPS" style="background:var(--bg);color:var(--green)"></div>
+          <div class="form-group"><label>Jira Project</label><input readonly value="IPSIPS – Boards 394 &amp; 579" style="background:var(--bg);color:var(--green)"></div>
+          <div class="form-section-title">Alert Thresholds</div>
+          <div class="form-group"><label>Vacation Conflict – Days Ahead</label><input type="number" value="5"></div>
+          <div class="form-group"><label>Overload Threshold (Jira issues)</label><input type="number" value="6"></div>
+          <div class="form-group"><label>Availability Reminder Day</label><select><option>Thursday EOD</option><option>Friday Morning</option><option>Monday Morning</option></select></div>
+          <div class="form-section-title">Notifications</div>
+          <div class="form-group"><label>Teams Alert Channel</label><input type="text" placeholder="e.g. IPS-Ops-Alerts"></div>
+          <div class="form-group"><label>Email Fallback</label><input type="email" value="arindam.chowdhury@materialplus.io"></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:20px" onclick="alert('Settings saved!')">Save Settings</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="member-modal">
+  <div class="modal">
+    <div class="modal-hero">
+      <div class="modal-avatar" id="modal-avatar"></div>
+      <div class="modal-hero-info"><h2 id="modal-name"></h2><p id="modal-subtitle"></p></div>
+      <div class="modal-status" id="modal-status"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="switchTab('overview',this)">Overview</div>
+      <div class="modal-tab" onclick="switchTab('projects',this)">Projects &amp; Workload</div>
+      <div class="modal-tab" onclick="switchTab('vacation',this)">Vacation &amp; Availability</div>
+      <div class="modal-tab" onclick="switchTab('skills',this)">Skills &amp; Profile</div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tab-content active" id="tab-overview"></div>
+      <div class="modal-tab-content" id="tab-projects"></div>
+      <div class="modal-tab-content" id="tab-vacation"></div>
+      <div class="modal-tab-content" id="tab-skills"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS=["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#ef4444","#14b8a6","#f97316","#06b6d4"];
+function ac(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))%COLORS.length;return COLORS[h];}
+function ini(n){return n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();}
+
+const TEAM=[
+  // ── INDIA SEs ──────────────────────────────────────────────────────────────
+  {id:1, name:"Ajay Kanakam",          loc:"India",role:"SE IN",pod:"G",pairCode:"AB",  expertise:"DP",     shift:"09:00–18:00",vacDays:20,skills:["Decipher","Confirmit","Data Processing","MaxDiff"],pair:"Bektas Akkaya (AB pod)",exp:"5+ yrs — data processing specialist",expected:"DP & DA on tracker waves, ad-hoc quant",title:"Senior Survey Engineer"},
+  {id:3, name:"Arindam Chowdhury",     loc:"India",role:"OM",  pod:"—", pairCode:"—",   expertise:"—",     shift:"09:00–18:00",vacDays:10,skills:["Project Management","Ops Strategy","Jira","Stakeholder Management"],pair:null,exp:"Director IPS – 10+ yrs",expected:"Team oversight, director-level ops",title:"Director – IPS"},
+  {id:4, name:"Asha Philip",           loc:"India",role:"SE IN",pod:"B",pairCode:"RAS", expertise:"DP",     shift:"—",          vacDays:44,skills:["Decipher","Confirmit","Data Processing","QA"],pair:"Rahmy Akbar + Sumit Kumar Nayak (RAS pod)",exp:"6 yrs — data processing, large tracker studies",expected:"DP on major trackers; currently on maternity leave",title:"Senior Survey Engineer",onLeave:"Maternity Leave"},
+  {id:6, name:"Bhavika Gaichare",      loc:"India",role:"SE IN",pod:"G",pairCode:"NAB", expertise:"Hybrid", shift:"09:00–18:00",vacDays:11,skills:["Decipher","Confirmit","SPSS","Data Processing"],pair:"Nic Ramsay (NAB pod)",exp:"Hybrid SP+DP — broad tracker & brand health experience",expected:"Tracker DP/SP, brand health studies",title:"Survey Engineer"},
+  {id:7, name:"Ishwar Gehlot",         loc:"India",role:"QA",  pod:"—", pairCode:"—",   expertise:"QA",    shift:"09:00–18:00",vacDays:16,skills:["QA Review","Link Testing","SE Reviewed","Survey Logic"],pair:null,exp:"5 yrs QA — link and data QA specialist",expected:"QA SP requests, SE review",title:"QA Lead"},
+  {id:8, name:"Mehul Anvekar",         loc:"India",role:"QA",  pod:"—", pairCode:"—",   expertise:"QA",    shift:"09:00–18:00",vacDays:16,skills:["QA","Survey Testing","Decipher","Confirmit"],pair:null,exp:"4 yrs QA",expected:"Full QA cycle",title:"QA Engineer"},
+  {id:9, name:"Mounika Veldandi",      loc:"India",role:"SE IN",pod:"B",pairCode:"EM",  expertise:"DP",     shift:"09:00–18:00",vacDays:19,skills:["Decipher","Data Processing","MaxDiff","Conjoint"],pair:"Edwin Castaneda (EM pod)",exp:"6 yrs — DP specialist, complex study analysis",expected:"DP on tracker & complex quant studies",title:"Senior Survey Engineer"},
+  {id:10,name:"Rachit Bansal",         loc:"India",role:"QA",  pod:"—", pairCode:"—",   expertise:"QA",    shift:"09:00–18:00",vacDays:15,skills:["QA","SE Review","Link QA","Data Validation"],pair:null,exp:"4 yrs QA",expected:"QA SP requests",title:"QA Engineer"},
+  {id:11,name:"Raghunandan Sharma",    loc:"India",role:"QA",  pod:"—", pairCode:"—",   expertise:"QA",    shift:"09:00–18:00",vacDays:14,skills:["QA","Survey QA","Decipher QA"],pair:null,exp:"3 yrs QA",expected:"QA cycles, final link checks",title:"QA Engineer"},
+  {id:12,name:"Romano Araujo",         loc:"India",role:"QA",  pod:"—", pairCode:"—",   expertise:"QA",    shift:"09:00–18:00",vacDays:20,skills:["QA","Survey Testing","Confirmit QA"],pair:null,exp:"5 yrs QA",expected:"Full QA, tracker waves",title:"Senior QA Engineer"},
+  {id:13,name:"Sachin Bansal",         loc:"India",role:"SE IN",pod:"B",pairCode:"JS",  expertise:"Hybrid", shift:"09:00–18:00",vacDays:16,skills:["Decipher","Survey Programming","Data Processing","MaxDiff"],pair:"Joseph Hengoed (JS pod)",exp:"Hybrid SP+DP — tracker scripting and data work",expected:"Tracker SP/DP, brand health surveys",title:"Survey Engineer"},
+  {id:14,name:"Shraddha Singh",        loc:"India",role:"QA",  pod:"—", pairCode:"—",   expertise:"QA",    shift:"09:00–18:00",vacDays:0, skills:["QA","SE Reviewed","Decipher QA"],pair:null,exp:"Returned from leave Sep 2026",expected:"QA review",title:"QA Engineer",onLeave:"Returned"},
+  {id:15,name:"Sonu Dhananjay Ghadi",  loc:"India",role:"SE IN",pod:"G",pairCode:"SGS", expertise:"SP",     shift:"09:00–18:00",vacDays:21,skills:["Decipher","Confirmit","Survey Programming","Scripting"],pair:"Swaranjali Deshmukh + Greg Burmann (SGS pod)",exp:"5 yrs — survey programmer, complex routing & scripting",expected:"SP builds, tracker scripting, GDC quant",title:"Senior Survey Engineer"},
+  {id:17,name:"Sumit Kumar Nayak",     loc:"India",role:"SE IN",pod:"B",pairCode:"RAS", expertise:"SP",     shift:"09:00–18:00",vacDays:26,skills:["Decipher","Confirmit","Python","Survey Programming","Automation"],pair:"Rahmy Akbar + Asha Philip (RAS pod)",exp:"6 yrs — scripting & automation specialist",expected:"Complex SP builds, GDC quant ops, automation",title:"Senior Survey Engineer"},
+  {id:18,name:"Sushil Nagale",         loc:"India",role:"SE IN",pod:"G",pairCode:"RS",  expertise:"DP",     shift:"09:00–18:00",vacDays:19,skills:["Decipher","Data Processing","Survey QA"],pair:"Rich Lumley (RS pod)",exp:"5 yrs — DP specialist, tracker data processing",expected:"DP on tracker waves, ad-hoc quant",title:"Survey Engineer"},
+  {id:19,name:"Swaranjali Deshmukh",   loc:"India",role:"SE IN",pod:"G",pairCode:"SGS", expertise:"DP",     shift:"09:00–18:00",vacDays:7, skills:["Decipher","Confirmit","Data Processing"],pair:"Sonu Dhananjay Ghadi + Greg Burmann (SGS pod)",exp:"4 yrs — data processing, tracker DP",expected:"DP on tracker & brand health studies",title:"Survey Engineer"},
+  // ── US OMs ─────────────────────────────────────────────────────────────────
+  {id:20,name:"Maria Beldo",           loc:"US",  role:"OM",  pod:"—", pairCode:"—",   expertise:"—",     shift:"09:00–17:00 ET",vacDays:10,skills:["Ops Management","Client Comms","Tracker Mgmt"],pair:null,exp:"Senior OM – US",expected:"US ops lead",title:"Operations Manager"},
+  {id:21,name:"Arian Frias",           loc:"US",  role:"OM",  pod:"—", pairCode:"—",   expertise:"—",     shift:"09:00–17:00 ET",vacDays:12,skills:["Project Management","Decipher","Quant Ops"],pair:null,exp:"OM – US team",expected:"US operations, client coordination",title:"Operations Manager"},
+  {id:22,name:"Nicole Bobco",          loc:"US",  role:"OM",  pod:"—", pairCode:"—",   expertise:"—",     shift:"09:00–17:00 ET",vacDays:13,skills:["Operations","Client Management","Tracker"],pair:null,exp:"OM – US",expected:"US tracker management",title:"Operations Manager"},
+  // ── US SEs ─────────────────────────────────────────────────────────────────
+  {id:23,name:"Adam Hahn",             loc:"US",  role:"SE US",pod:"G",pairCode:"Solo", expertise:"Hybrid", shift:"09:00–17:00 CT",vacDays:14,skills:["Decipher","Confirmit","Brand Tracker","MaxDiff","Leadership"],pair:"Solo – Senior Director",exp:"Senior Director — works independently across all studies",expected:"Apple Brand, Square Brand — senior individual contributor",title:"Senior Director, Survey Engineering"},
+  {id:24,name:"Bektas Akkaya",         loc:"US",  role:"SE US",pod:"B",pairCode:"AB",  expertise:"Hybrid", shift:"09:00–17:00 ET",vacDays:1, skills:["Decipher","Confirmit","Survey Programming","Data Processing"],pair:"Ajay Kanakam (AB pod)",exp:"Hybrid SP+DP — cross-pod pairing with India SE team",expected:"Hybrid SP/DP across tracker and quant studies",title:"Survey Engineer"},
+  {id:25,name:"Edwin Castaneda",       loc:"US",  role:"SE US",pod:"B",pairCode:"EM",  expertise:"Hybrid", shift:"09:00–17:00 CT",vacDays:18,skills:["Decipher","Confirmit","Quant Ops","MaxDiff","Data Processing"],pair:"Mounika Veldandi (EM pod)",exp:"Hybrid SP+DP — quant ops and tracker specialist",expected:"Quant ops, tracker SP/DP, brand health studies",title:"Senior Survey Engineer"},
+  {id:26,name:"Greg Burmann",          loc:"US",  role:"SE US",pod:"G",pairCode:"SGS", expertise:"Hybrid", shift:"09:00–17:00 CT",vacDays:8, skills:["Decipher","Confirmit","Brand Health","Survey Programming"],pair:"Swaranjali Deshmukh + Sonu Dhananjay Ghadi (SGS pod)",exp:"Hybrid SP+DP — brand tracker and client-facing SE",expected:"Brand health trackers, SP/DP on lifestyle studies",title:"Survey Engineer"},
+  {id:27,name:"Greg Schneider",        loc:"US",  role:"SE US",pod:"G",pairCode:"Solo", expertise:"Hybrid", shift:"09:00–17:00 CT",vacDays:0, skills:["Decipher","Confirmit","Survey Engineering","Leadership"],pair:"Solo – Senior Director",exp:"Senior Director — works independently",expected:"Independent senior contributor, strategic studies",title:"Senior Director, Survey Engineering"},
+  {id:28,name:"Joseph Hengoed",        loc:"US",  role:"SE US",pod:"B",pairCode:"JS",  expertise:"Hybrid", shift:"09:00–17:00 ET",vacDays:4, skills:["Decipher","Confirmit","Survey Programming","Data Processing"],pair:"Sachin Bansal (JS pod)",exp:"Hybrid SP+DP — broad tracker coverage",expected:"SP/DP tracker waves, brand health, quant ops",title:"Survey Engineer"},
+  {id:29,name:"Nic Ramsay",            loc:"US",  role:"SE US",pod:"G",pairCode:"NAB", expertise:"Hybrid", shift:"09:00–17:00 ET",vacDays:6, skills:["Decipher","Confirmit","Tracker Programming","Brand Health"],pair:"Bhavika Gaichare (NAB pod)",exp:"Hybrid SP+DP — large multi-client tracker specialist",expected:"Kaiser, QuickBooks, SIE, Sephora trackers — SP/DP",title:"Survey Engineer"},
+  {id:30,name:"Rahmatullah Akbar (Rahmy)",loc:"US",role:"SE US",pod:"G",pairCode:"RAS", expertise:"Hybrid", shift:"09:00–17:00 ET",vacDays:11,skills:["Decipher","Confirmit","Survey Programming","Data Processing"],pair:"Asha Philip + Sumit Kumar Nayak (RAS pod)",exp:"Hybrid SP+DP — broad portfolio across trackers and quant",expected:"SP/DP across Lululemon, Ascension, brand health trackers",title:"Survey Engineer"},
+  {id:31,name:"Rich Lumley",           loc:"US",  role:"SE US",pod:"G",pairCode:"RS",  expertise:"Hybrid", shift:"09:00–17:00 ET",vacDays:2, skills:["Decipher","Confirmit","Survey Programming","Data Processing"],pair:"Sushil Nagale (RS pod)",exp:"Hybrid SP+DP — paired with India DP for tracker coverage",expected:"SP/DP hybrid across tracker waves",title:"Survey Engineer"},
+];
+
+// SEs who have NOT updated their availability for the upcoming week (Sep 21–25)
+// Sourced from Mat SE Weekly Availability.xlsx — blank cells confirmed 2026-09-19
+// Rahmy Akbar = Rahmatullah Akbar (same person — alias confirmed 2026-09-19)
+const AVAIL_BLANKS=new Set(["Joseph Hengoed","Rahmatullah Akbar (Rahmy)"]);
+
+const VAC={};
+
+const JIRA=[
+
+];
+
+const DATES_SNAP=["9/18","9/21","9/22","9/23","9/24","9/25"];
+const DATES_FULL=["9/18","9/19","9/21","9/22","9/23","9/24","9/25","9/26","9/28","9/29","9/30","10/1","10/2"];
+const DAY={  "9/18":"Fri","9/19":"Sat","9/21":"Mon","9/22":"Tue","9/23":"Wed","9/24":"Thu","9/25":"Fri","9/26":"Sat","9/28":"Mon","9/29":"Tue","9/30":"Wed","10/1":"Thu","10/2":"Fri"};
+const STATUS_COLORS={"In Programming":["#dbeafe","#1e40af"],"In Field":["#d1fae5","#065f46"],"SP Iterations":["#fef3c7","#92400e"],"QA Done":["#d1fae5","#065f46"],"SE Reviewed":["#ede9fe","#5b21b6"],"QA In Progress":["#fee2e2","#991b1b"],"Open":["#f1f5f9","#374151"],"Initiated":["#fef3c7","#92400e"],"Billing":["#d1fae5","#065f46"],"Collaboration Meeting":["#dbeafe","#1e40af"],"Documentation":["#f1f5f9","#374151"],"Initial Link":["#f1f5f9","#374151"]};
+
+function cellClass(v){
+  if(!v)return"available";if(v==="V")return"vacation";if(v==="H")return"holiday";
+  if(v==="HDL")return"half";if(v==="M")return"maternity";return"absent";
+}
+
+let roleFilter="all";
+function showView(id,navEl){
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-"+id).classList.add("active");
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  if(navEl)navEl.classList.add("active");
+  else{
+    const titles={dashboard:"Dashboard",team:"Team",availability:"Availability",projects:"Projects",addmember:"Add",settings:"Settings"};
+    document.querySelectorAll(".nav-item").forEach(n=>{if(n.textContent.includes(titles[id]))n.classList.add("active");});
+  }
+  const t={dashboard:"Dashboard",team:"Team Directory",availability:"Availability Matrix",projects:"Projects & Pods",addmember:"Add Member",settings:"Settings"};
+  document.getElementById("view-title").textContent=t[id]||id;
+}
+
+function renderAvailSnap(){
+  const highlight=["Asha Philip","Sonu Dhananjay Ghadi","Bhavika Gaichare","Ishwar Gehlot","Sumit Kumar Nayak","Edwin Castaneda","Denis Malyshev","Rachit Bansal","Shraddha Singh"];
+  const rows=TEAM.filter(m=>highlight.includes(m.name));
+  document.getElementById("avail-snap-body").innerHTML=rows.map(m=>{
+    const v=VAC[m.name]||{};
+    return`<tr><td style="display:flex;align-items:center;gap:8px;padding:8px 12px"><div style="width:24px;height:24px;border-radius:50%;background:${ac(m.name)};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0">${ini(m.name)}</div><span style="font-weight:500">${m.name.split(" ")[0]}</span><span class="role-badge role-${m.role.replace(" ","_")}">${m.role}</span></td>${DATES_SNAP.map(d=>`<td><span class="day-cell ${cellClass(v[d])}" title="${v[d]||"Available"}">${v[d]||"✓"}</span></td>`).join("")}</tr>`;
+  }).join("");
+}
+
+function renderWhosOut(){
+  const nextWk=["9/21","9/22","9/23","9/24","9/25"];
+  let html="";
+  TEAM.forEach(m=>{
+    const v=VAC[m.name]||{};
+    const todayOut=v["9/18"]==="V"||v["9/18"]==="M"||m.onLeave?.includes("Vacation");
+    const nextWkOut=nextWk.some(d=>v[d]==="V");
+    if(!todayOut&&!nextWkOut)return;
+    const label=todayOut?"Out Today":nextWkOut?"Out Next Wk":"";
+    html+=`<div class="out-item"><div class="avatar-sm" style="background:${ac(m.name)}">${ini(m.name)}</div><div class="out-info"><strong>${m.name.split(" ").slice(0,2).join(" ")}</strong><span>${m.role} · ${m.loc}</span></div><div class="out-dates">${label}</div></div>`;
+  });
+  document.getElementById("whos-out-list").innerHTML=html||`<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">No absences flagged 🎉</div>`;
+}
+
+// ── AVAILABILITY REMINDERS ───────────────────────────────────────────────────
+function getReminderLog(){try{return JSON.parse(localStorage.getItem('ips_reminders')||'{}');}catch(e){return{};}}
+function saveReminderLog(log){try{localStorage.setItem('ips_reminders',JSON.stringify(log));}catch(e){}}
+function daysSince(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso).getTime())/86400000);}
+
+function renderReminders(){
+  const log=getReminderLog();
+  // Sort: blank-availability people first, then by last-reminded (never first)
+  const SEs=TEAM.filter(m=>m.role.includes('SE')&&!m.onLeave?.includes('Maternity'))
+    .sort((a,b)=>{
+      const aBlank=AVAIL_BLANKS.has(a.name)?0:1;
+      const bBlank=AVAIL_BLANKS.has(b.name)?0:1;
+      if(aBlank!==bBlank)return aBlank-bBlank;
+      const aDays=daysSince(log[a.name]);
+      const bDays=daysSince(log[b.name]);
+      if(aDays===null&&bDays!==null)return-1;
+      if(bDays===null&&aDays!==null)return 1;
+      return(bDays||0)-(aDays||0);
+    });
+  const nextWk='Sep 21–25';
+  const html=SEs.map(m=>{
+    const blank=AVAIL_BLANKS.has(m.name);
+    const last=log[m.name];
+    const days=daysSince(last);
+    const recent=days!==null&&days<3;
+    let lastText,cls;
+    if(!last){lastText='Never sent';cls='never';}
+    else if(days===0){lastText='Sent today';cls='recent';}
+    else if(days===1){lastText='Sent yesterday';cls='recent';}
+    else if(recent){lastText=`Sent ${days}d ago`;cls='recent';}
+    else{lastText=`Last: ${days}d ago`;cls='stale';}
+    const rowStyle=blank?'border-left:3px solid var(--red);background:var(--red-light);':'';
+    return`<div class="reminder-row" style="${rowStyle}">
+      <div class="avatar-sm" style="background:${ac(m.name)}">${ini(m.name)}</div>
+      <div class="reminder-info">
+        <strong>${m.name}${blank?' <span style="font-size:10px;background:var(--red);color:#fff;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle">⚠️ No hrs</span>':''}</strong>
+        <span>${m.role} · ${m.loc} · Pod ${m.pod} ${m.pairCode!=='—'?'· '+m.pairCode:''}</span>
+      </div>
+      <div class="reminder-last ${cls}">${recent?'✓ ':''} ${lastText}</div>
+      <button class="btn-remind" ${recent?'disabled title="Reminded recently — wait 3 days"':''} onclick="sendReminder('${m.name.replace(/'/g,"\\'")}')">
+        ${recent?'✓ Sent':blank?'⚠️ Remind':'Remind'}
+      </button>
+    </div>`;
+  }).join('');
+  document.getElementById('reminder-list').innerHTML=html;
+}
+
+function sendReminder(name){
+  const log=getReminderLog();
+  log[name]=new Date().toISOString();
+  saveReminderLog(log);
+  renderReminders();
+  const firstName=name.split(' ')[0];
+  if(typeof sendPrompt==='function'){
+    sendPrompt(`Please send a Teams direct message to ${name} asking them to update their availability hours for next week (Sep 21–25, 2026) in the Mat SE Weekly Availability SharePoint sheet. Keep it friendly and brief — something like: "Hi ${firstName}, quick nudge to update your availability for next week in the SE Weekly Availability sheet when you get a chance. Thanks! 🙏"`);
+  } else {
+    alert(`Reminder logged for ${name}. Open this in Claude to send the Teams message.`);
+  }
+}
+
+function sendAllReminders(){
+  const log=getReminderLog();
+  const SEs=TEAM.filter(m=>m.role.includes('SE')&&!m.onLeave?.includes('Maternity'));
+  // Only send to people who (a) have blank availability AND (b) haven't been reminded in the last 3 days
+  const overdue=SEs.filter(m=>{
+    if(!AVAIL_BLANKS.has(m.name))return false;
+    const d=daysSince(log[m.name]);
+    return d===null||d>=3;
+  });
+  if(!overdue.length){alert('Everyone has been reminded recently ✓');return;}
+  const now=new Date().toISOString();
+  overdue.forEach(m=>{log[m.name]=now;});
+  saveReminderLog(log);
+  renderReminders();
+  const nameList=overdue.map(m=>m.name).join(', ');
+  if(typeof sendPrompt==='function'){
+    sendPrompt(`Please send individual Teams direct messages to each of the following team members asking them to update their availability hours for next week (Sep 21–25, 2026) in the Mat SE Weekly Availability SharePoint sheet. Send each person a separate friendly, brief message personalised with their first name. Team members to message: ${nameList}`);
+  } else {
+    alert(`Reminders logged for: ${nameList}`);
+  }
+}
+
+function renderTeam(){
+  const s=(document.getElementById("team-search")?.value||"").toLowerCase();
+  const jMap={};JIRA.forEach(i=>{if(!jMap[i.assignee])jMap[i.assignee]=[];jMap[i.assignee].push(i);});
+  const filtered=TEAM.filter(m=>{
+    const ms=!s||m.name.toLowerCase().includes(s)||m.role.toLowerCase().includes(s)||m.title.toLowerCase().includes(s);
+    const mr=roleFilter==="all"||m.role===roleFilter||m.loc===roleFilter;
+    return ms&&mr;
+  });
+  document.getElementById("team-grid").innerHTML=filtered.map(m=>{
+    const issues=jMap[m.name]||[];
+    const v=VAC[m.name]||{};
+    const outToday=v["9/18"]==="V"||m.onLeave;
+    const outNext=["9/21","9/22","9/23","9/24","9/25"].some(d=>v[d]==="V");
+    const wl=Math.min(issues.length/8*100,100);
+    const wlc=wl>75?"high":wl>40?"medium":"low";
+    return`<div class="team-card" onclick="openMember(${m.id})">
+      ${outToday?`<div class="vacation-ribbon">${m.onLeave?.includes("Maternity")?"ML":"OOO"}</div>`:""}
+      <div class="card-top"><div class="avatar-lg" style="background:${ac(m.name)}">${ini(m.name)}</div><div><h3>${m.name}</h3><div class="sub">${m.title}</div></div></div>
+      <div class="card-meta">
+        <span class="role-badge role-${m.role.replace(" ","_")}">${m.role}</span>
+        <span class="loc-badge">${m.loc==="India"?"🇮🇳":"🇺🇸"} ${m.loc}</span>
+        ${outToday?`<span class="role-badge" style="background:var(--red-light);color:var(--red)">Out Today</span>`:""}
+        ${!outToday&&outNext?`<span class="role-badge" style="background:var(--orange-light);color:#92400e">Out Next Wk</span>`:""}
+      </div>
+      <div class="jira-count"><span class="status-dot-sm ${wlc}"></span>${issues.length} active issue${issues.length!==1?"s":""}${issues.length>=6?` <span style="color:var(--red);font-weight:700">⚠️ Overloaded</span>`:""}</div>
+      <div class="workload-bar"><div class="workload-fill ${wlc}" style="width:${wl}%"></div></div>
+    </div>`;
+  }).join("");
+}
+
+function setRoleFilter(r,btn){
+  roleFilter=r;
+  document.querySelectorAll(".filter-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  renderTeam();
+}
+
+function openMember(id){
+  const m=TEAM.find(x=>x.id===id);if(!m)return;
+  const v=VAC[m.name]||{};
+  const issues=JIRA.filter(i=>i.assignee===m.name);
+  const outToday=v["9/18"]==="V"||m.onLeave;
+  const wl=Math.min(Math.round(issues.length/8*100),100);
+  const wlc=wl>75?"high":wl>40?"medium":"low";
+  document.getElementById("modal-avatar").textContent=ini(m.name);
+  document.getElementById("modal-avatar").style.background=ac(m.name);
+  document.getElementById("modal-name").textContent=m.name;
+  document.getElementById("modal-subtitle").textContent=`${m.title} · ${m.role} · ${m.loc}`;
+  document.getElementById("modal-status").innerHTML=outToday
+    ?`<span style="background:var(--red);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700">${m.onLeave?.includes("Maternity")?"Maternity":"On Vacation"}</span>`
+    :`<span style="background:var(--green-light);color:var(--green);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700">✓ Available</span>`;
+
+  document.getElementById("tab-overview").innerHTML=`
+    <div class="info-grid">
+      <div class="info-item"><label>Role</label><p>${m.role}</p></div>
+      <div class="info-item"><label>Location</label><p>${m.loc==="India"?"🇮🇳":"🇺🇸"} ${m.loc}</p></div>
+      <div class="info-item"><label>Expertise</label><p>${m.expertise||"—"}</p></div>
+      <div class="info-item"><label>Pod</label><p>${m.pod&&m.pod!=="—"?`Pod ${m.pod} · ${m.pairCode}`:"—"}</p></div>
+      <div class="info-item"><label>Shift</label><p>${m.shift||"—"}</p></div>
+      <div class="info-item"><label>Pod / Pair</label><p>${m.pair||"—"}</p></div>
+      <div class="info-item"><label>2026 Vacation Days</label><p>${m.vacDays}</p></div>
+      <div class="info-item"><label>Active Jira Issues</label><p>${issues.length}${issues.length>=6?" ⚠️ High":""}</p></div>
+    </div>
+    <div class="section-title">Workload</div>
+    <div style="display:flex;align-items:center;gap:12px"><div class="workload-bar" style="flex:1;height:12px"><div class="workload-fill ${wlc}" style="width:${wl}%"></div></div><span style="font-size:13px;font-weight:700">${wl}%</span></div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${issues.length}/8 capacity slots used</div>
+    <div class="section-title">Expected Work</div>
+    <p style="font-size:13px;color:var(--text-muted)">${m.expected}</p>
+    <div class="section-title">Status</div>
+    <p style="font-size:13px">${outToday?"⛔ Currently out of office":"✅ Available and active"}</p>
+  `;
+
+  document.getElementById("tab-projects").innerHTML=issues.length?`
+    <div class="section-title">${issues.length} Active Issue${issues.length!==1?"s":""}</div>
+    ${issues.map(i=>{const sc=STATUS_COLORS[i.status]||["#f1f5f9","#374151"];return`<div class="jira-issue"><span class="issue-key">${i.key}</span><span class="issue-summary">${i.summary}</span><span class="status-pill" style="background:${sc[0]};color:${sc[1]}">${i.status}</span></div>`;}).join("")}
+  `:`<div class="empty"><p style="font-size:32px">📭</p><span>No active Jira issues</span></div>`;
+
+  document.getElementById("tab-vacation").innerHTML=`
+    <div class="section-title">Calendar Sep–Oct 2026</div>
+    ${DATES_FULL.map(d=>{const val=v[d]||"";return`<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border)"><div style="width:80px;font-size:12px;font-weight:600;color:var(--text-muted)">${d} ${DAY[d]||""}</div><span class="day-cell ${cellClass(val)}" style="width:auto;padding:4px 12px;border-radius:6px">${val||"Available"}</span></div>`;}).join("")}
+    <div class="section-title">2026 Summary</div>
+    <p style="font-size:13px">Vacation days taken: <strong>${m.vacDays}</strong></p>
+    ${m.onLeave?`<p style="font-size:13px;margin-top:8px">Status: <strong style="color:var(--purple)">${m.onLeave}</strong></p>`:""}
+  `;
+
+  document.getElementById("tab-skills").innerHTML=`
+    <div class="section-title">Job Profile</div>
+    <p style="font-size:14px;font-weight:500">${m.title}</p>
+    <div class="section-title">Skills &amp; Expertise</div>
+    <div class="tag-list">${m.skills.map(s=>`<span class="tag">${s}</span>`).join("")}</div>
+    <div class="section-title">Experience</div>
+    <p style="font-size:13px;color:var(--text-muted)">${m.exp}</p>
+    <div class="section-title">Pod &amp; Pair</div>
+    <p style="font-size:13px">${m.pod&&m.pod!=="—"?`🟡 Pod ${m.pod} · <strong>${m.pairCode}</strong>`:"No pod (OM/QA)"}</p>
+    <p style="font-size:12px;color:var(--text-muted);margin-top:4px">${m.pair||"Works independently"}</p>
+    <div class="section-title">Expertise Type</div>
+    <p style="font-size:13px">${m.expertise==="DP"?"📊 Data Processing (DP)":m.expertise==="SP"?"🔧 Survey Programming (SP)":m.expertise==="Hybrid"?"⚡ Hybrid SP + DP":"—"}</p>
+  `;
+
+  document.querySelectorAll(".modal-tab").forEach((t,i)=>t.classList.toggle("active",i===0));
+  document.querySelectorAll(".modal-tab-content").forEach((c,i)=>c.classList.toggle("active",i===0));
+  document.getElementById("member-modal").classList.add("open");
+}
+
+function closeModal(){document.getElementById("member-modal").classList.remove("open");}
+document.getElementById("member-modal").addEventListener("click",e=>{if(e.target===e.currentTarget)closeModal();});
+
+function switchTab(name,el){
+  document.querySelectorAll(".modal-tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".modal-tab-content").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("tab-"+name).classList.add("active");
+}
+
+function renderAvailFull(){
+  document.getElementById("avail-head").innerHTML=`<tr><th>Team Member</th>${DATES_FULL.map(d=>`<th>${d}<br><span style="font-weight:400">${DAY[d]||""}</span></th>`).join("")}</tr>`;
+  document.getElementById("avail-body").innerHTML=TEAM.map(m=>{
+    const v=VAC[m.name]||{};
+    return`<tr><td style="display:flex;align-items:center;gap:8px"><div style="width:24px;height:24px;border-radius:50%;background:${ac(m.name)};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0">${ini(m.name)}</div><div><div style="font-weight:600;font-size:12px">${m.name}</div><span class="role-badge role-${m.role.replace(" ","_")}" style="font-size:9px">${m.role}</span></div></td>${DATES_FULL.map(d=>`<td><span class="day-cell ${cellClass(v[d])}" style="cursor:default" title="${m.name} ${d}: ${v[d]||"Available"}">${v[d]||"✓"}</span></td>`).join("")}</tr>`;
+  }).join("");
+}
+
+function renderProjects(){
+  const groups={};
+  JIRA.forEach(i=>{
+    const proj=i.summary.replace(/^\[.*?\]\s*/,"").replace(/W\d+\s*/,"").replace(/\s*(Wave|Pulse)\s*\d+.*/i,"").split(/\s*[-–]\s*/)[0].trim().substring(0,50);
+    if(!groups[proj])groups[proj]={name:proj,issues:[],assignees:new Set()};
+    groups[proj].issues.push(i);
+    groups[proj].assignees.add(i.assignee);
+  });
+  const nextWk=["9/21","9/22","9/23","9/24","9/25"];
+  document.getElementById("projects-list").innerHTML=Object.values(groups).sort((a,b)=>b.issues.length-a.issues.length).slice(0,15).map(g=>{
+    const vacPods=[...g.assignees].filter(a=>{const v=VAC[a]||{};return nextWk.some(d=>v[d]==="V");});
+    const hasAlert=vacPods.length>0;
+    const statusCounts={};g.issues.forEach(i=>{statusCounts[i.status]=(statusCounts[i.status]||0)+1;});
+    return`<div class="project-card" style="${hasAlert?"border-left:3px solid var(--red);":""}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <h3>${g.name}</h3>
+        ${hasAlert?`<span class="alert-tag red">⚠️ Pod member on vacation</span>`:`<span class="alert-tag" style="background:var(--green-light);color:var(--green)">✓ All available</span>`}
+      </div>
+      <div class="proj-meta"><span>🎫 ${g.issues.length} issue${g.issues.length!==1?"s":""}</span><span>· ${Object.entries(statusCounts).map(([s,c])=>`${c} ${s}`).join(" · ")}</span></div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Pod Members</div>
+      <div class="pod-members">${[...g.assignees].map(a=>`<span class="pod-chip ${vacPods.includes(a)?"on-vacation":""}">${vacPods.includes(a)?"⚠️ ":""}${a.split(" ")[0]}</span>`).join("")}</div>
+      ${hasAlert?`<div style="margin-top:12px;font-size:12px;color:var(--red)">⚠️ ${vacPods.join(", ")} out next week – arrange coverage or reassign</div>`:""}
+    </div>`;
+  }).join("");
+}
+
+function fillPairSelect(){
+  const s=document.getElementById("pair-select");
+  TEAM.forEach(m=>{const o=document.createElement("option");o.textContent=m.name;s.appendChild(o);});
+}
+
+renderAvailSnap();
+renderWhosOut();
+renderReminders();
+renderTeam();
+renderAvailFull();
+renderProjects();
+fillPairSelect();
+</script>
+</body>
+</html>
