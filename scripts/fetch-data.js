@@ -7,6 +7,11 @@
 import fetch from 'node-fetch';
 import * as XLSX from 'xlsx';
 import { writeFileSync } from 'fs';
+import { readFileSync as _readFile, existsSync } from 'fs';
+import { resolve as _resolve, dirname as _dirname } from 'path';
+import { fileURLToPath as _fileURLToPath } from 'url';
+const __dirFD = _dirname(_fileURLToPath(import.meta.url));
+const SP_CACHE = _resolve(__dirFD, '..', 'public', 'sharepoint-data.json');
 
 // ── SharePoint direct-download URLs (shareable links + &download=1) ───────────
 const VACATION_URL =
@@ -40,59 +45,77 @@ async function downloadExcel(url, label) {
 
 // ── SharePoint: Vacation Calendar ─────────────────────────────────────────────
 async function fetchVacation() {
-  const buf = await downloadExcel(VACATION_URL, 'Vacation Calendar');
-  const wb = XLSX.read(buf, { type: 'buffer' });
-  const yr = new Date().getFullYear().toString();
-  const ws = wb.Sheets[wb.SheetNames.find(s => s.includes(yr)) || wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
-  const hdr = rows[0];
-  const vac = {};
-  for (let r = 1; r < rows.length; r++) {
-    const row = rows[r];
-    const name = row[0];
-    if (!name || typeof name !== 'string') continue;
-    vac[name.trim()] = {};
-    for (let c = 1; c < hdr.length; c++) {
-      const dv = hdr[c];
-      if (!dv) continue;
-      const ds = typeof dv === 'number' ? excelDate(dv) : String(dv);
-      const cv = row[c];
-      if (cv && cv !== '') vac[name.trim()][ds] = String(cv).trim();
+  try {
+    const buf = await downloadExcel(VACATION_URL, 'Vacation Calendar');
+    const wb = XLSX.read(buf, { type: 'buffer' });
+    const yr = new Date().getFullYear().toString();
+    const ws = wb.Sheets[wb.SheetNames.find(s => s.includes(yr)) || wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+    const hdr = rows[0];
+    const vac = {};
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const name = row[0];
+      if (!name || typeof name !== 'string') continue;
+      vac[name.trim()] = {};
+      for (let c = 1; c < hdr.length; c++) {
+        const dv = hdr[c];
+        if (!dv) continue;
+        const ds = typeof dv === 'number' ? excelDate(dv) : String(dv);
+        const cv = row[c];
+        if (cv && cv !== '') vac[name.trim()][ds] = String(cv).trim();
+      }
     }
+    return vac;
+  } catch (e) {
+    console.warn('⚠ SharePoint direct download failed, using cached data:', e.message);
+    if (existsSync(SP_CACHE)) {
+      const cache = JSON.parse(_readFile(SP_CACHE, 'utf8'));
+      return cache.vac || {};
+    }
+    throw e;
   }
-  return vac;
 }
 
 // ── SharePoint: SE Weekly Availability ───────────────────────────────────────
 async function fetchAvailability() {
-  const buf = await downloadExcel(AVAILABILITY_URL, 'Availability');
-  const wb = XLSX.read(buf, { type: 'buffer' });
-  const yr = new Date().getFullYear().toString();
-  const ws = wb.Sheets[wb.SheetNames.find(s => s.includes(yr)) || wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
-  const nw = weekDates();
-  const availBlanks = [];
-  let hIdx = -1;
-  for (let r = rows.length - 1; r >= 0; r--) {
-    const rd = rows[r].slice(4, 9).map(v =>
-      v == null ? '' : (typeof v === 'number' ? excelDate(v) : String(v))
-    );
-    if (rd[0] === nw[0]) { hIdx = r; break; }
+  try {
+    const buf = await downloadExcel(AVAILABILITY_URL, 'Availability');
+    const wb = XLSX.read(buf, { type: 'buffer' });
+    const yr = new Date().getFullYear().toString();
+    const ws = wb.Sheets[wb.SheetNames.find(s => s.includes(yr)) || wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+    const nw = weekDates();
+    const availBlanks = [];
+    let hIdx = -1;
+    for (let r = rows.length - 1; r >= 0; r--) {
+      const rd = rows[r].slice(4, 9).map(v =>
+        v == null ? '' : (typeof v === 'number' ? excelDate(v) : String(v))
+      );
+      if (rd[0] === nw[0]) { hIdx = r; break; }
+    }
+    if (hIdx === -1) {
+      console.warn('Next-week header not found in availability sheet');
+      throw new Error('Next-week header not found');
+    }
+    const availHours = {};
+    for (let r = hIdx + 1; r < rows.length; r++) {
+      const row = rows[r];
+      const name = row[1];
+      if (!name || typeof name !== 'string') break;
+      const hrs = row.slice(4, 9).map(v => v == null ? null : v);
+      if (hrs.every(v => v === null || v === '')) availBlanks.push(name.trim());
+      availHours[name.trim()] = { hours: hrs, total: hrs.reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0) };
+    }
+    return { availBlanks, availHours };
+  } catch (e) {
+    console.warn('⚠ SharePoint direct download failed, using cached data:', e.message);
+    if (existsSync(SP_CACHE)) {
+      const cache = JSON.parse(_readFile(SP_CACHE, 'utf8'));
+      return { availBlanks: cache.availBlanks || [], availHours: cache.availHours || {} };
+    }
+    throw e;
   }
-  if (hIdx === -1) {
-    console.warn('Next-week header not found in availability sheet');
-    return { availBlanks, availHours: {} };
-  }
-  const availHours = {};
-  for (let r = hIdx + 1; r < rows.length; r++) {
-    const row = rows[r];
-    const name = row[1];
-    if (!name || typeof name !== 'string') break;
-    const hrs = row.slice(4, 9).map(v => v == null ? null : v);
-    if (hrs.every(v => v === null || v === '')) availBlanks.push(name.trim());
-    availHours[name.trim()] = { hours: hrs, total: hrs.reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0) };
-  }
-  return { availBlanks, availHours };
 }
 
 // ── Jira ──────────────────────────────────────────────────────────────────────
@@ -104,7 +127,7 @@ async function fetchJira() {
   const auth = Buffer.from(`${email}:${tok}`).toString('base64');
   const jql = encodeURIComponent(`project=${proj} AND status not in (Done,Closed,Resolved) ORDER BY updated DESC`);
   const res = await fetch(
-    `https://${base}/rest/api/3/search?jql=${jql}&maxResults=200&fields=summary,status,assignee,issuetype,priority`,
+    `https://${base}/rest/api/3/search/jql?jql=${jql}&maxResults=200&fields=summary,status,assignee,issuetype,priority`,
     { headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' } }
   );
   if (!res.ok) throw new Error(`Jira ${res.status}: ${await res.text()}`);
